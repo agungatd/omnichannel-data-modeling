@@ -1,0 +1,21 @@
+omnichannel-data-modeling/
+│
+├── README.md
+├── LICENSE
+│
+├── design_doc/
+│   └── design.md                  # Your written explanation of the architecture
+│
+├── schema/
+│   ├── logical_model.png          # ERD or Mermaid diagram
+│   └── iceberg_ddls.sql           # Optional Iceberg/Delta SQL DDLs
+│
+├── sample_data/
+│   ├── users.csv
+│   ├── orders.csv
+│   ├── inventory_snapshots.csv
+│   └── events.json
+│
+└── scripts/
+    ├── ingestion_plan.md          # Describe your batch/stream integration plan
+    └── identity_resolution.md     # Your deduplication & stitching strategy
