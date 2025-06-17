@@ -1,6 +1,6 @@
 # Design Document: ShopSphere Omnichannel Data Platform
 
-## Introduction and Goals
+## 1. Introduction and Goals
 
 The primary goal is to build "single source of truth" that is reliable, scalable, and serve multiple use cases:
 
@@ -12,7 +12,7 @@ After this we will refer to each use case with its order number (e.g. for Fraud 
 
 This document outline a Lakehouse architecture that balance performance, cost, and flexibility to meet these goals.
 
-## Data Architecture Design: The Medallion Lakehouse
+## 2. Data Architecture Design: The Medallion Lakehouse
 
 We will adopt a multi-layered Medallion architecture (Bronze, Silver, Gold) to progressively refine data.
 
@@ -34,5 +34,8 @@ Data from Bronze layer is cleaned, deduplicated, and transformed into queryable 
 
 * **Gold Layer (Aggregated & Business-Ready Data)**
 This layer contains business-level aggregates and dimensional models optimized for analytics and reporting. The Customer 360 dashboard and other BI tools will query this layer.
+	* Tables: For table naming format I'll use `<>_<>` such as:
+		* ``
+	* Format: **Apache Iceberg** tables, potentially with further performance optimization (e.g. partitioning).
 
-## 
+
