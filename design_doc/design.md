@@ -78,6 +78,7 @@ To track historical changes in dimension tables. We will use **SCD Type 2** stra
 	
 * **Other Considerations**:
 	* If the real-time data ingestion is very high in volume and velocity and also need to be cleaned, transformed or enrich for real-time reporting and application. then, we will use *Apache Flink* for data processing before storing it into our bronze table. In parallel the processed data could also be directly write into another kafka topic if it used for another application or service. FLink performed better than spark streaming in real-time data scenario.
+	* if the dashboard report mainly look into monthly and yearly metrics performance. consider to partitioned data by month plus grouping column if the column used frequently.
 
 ## 5. Assumptions & Indonesian Context
 
