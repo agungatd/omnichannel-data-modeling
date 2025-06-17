@@ -8,6 +8,8 @@ The primary goal is to build "single source of truth" that is reliable, scalable
 2. **Real-time Inventory Tracking**: Maintain accurate, near real-time stock levels.
 3. **Fraud Detection**: Identify and flag suspicious activities in real-time, probably feeding cleaned and transformed data into a Machine Learning model for fraud detection.
 
-After this we will refer to each use case with its order number (e.g. for Fraud Detection use `case no.3`).
+After this we will refer to each use case with its order number (e.g. for Fraud Detection use `usecase no.3`).
 
-##
+This document outline a Lakehouse architecture that balance performance, cost, and flexibility to meet these goals.
+
+## 
