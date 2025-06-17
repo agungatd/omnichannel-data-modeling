@@ -1,6 +1,6 @@
 # **Take-Home Assignment: Omnichannel Retail Data Modeling**
 
-## Background:
+## Background
 
 You’ve just joined **ShopSphere**, a fast-scaling omnichannel retail platform. The company wants a unified data model that integrates online purchases, offline store transactions, third-party marketplaces, and real-time behavioral tracking.
 
@@ -16,7 +16,7 @@ Your submission should include:
 
 * **Entity Relationship Diagram (ERD)** or similar logical model
 * Clear keys and relationship explanations
-* SCD strategy (Type 2)
+* SCD strategy
 
 ### 2. **Lakehouse Table Design**
 
@@ -128,11 +128,24 @@ Short written rationale (\~1 page max) explaining:
 
 ---
 
+## Sample Data
+
+Please see `/sample_data` folder.
+
+---
+
 ## Bonus (optional)
 
 * Design a **risk scoring logic** using event + order data
 * Create Iceberg DDLs or SQL DDLs for critical tables
 * Identity stitching logic (e.g., combine same person across marketplace/email/loyalty)
+
+## Bonus Questions
+
+* How would you detect inventory theft across stores using this model?
+* How would you model non-relational data (e.g., JSON product variants from Shopee)?
+* How would you optimize for cost in a cloud data lake setup?
+* How to enable time-travel queries in Iceberg?
 
 ---
 
