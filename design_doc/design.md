@@ -22,7 +22,7 @@ This layer serve as the initial lending zone for all source data, stored in its 
 	*  `bronze_postgres__orders`
 	*  `bronze_mongo__marketplace_orders`
 	*  `bronze_kafka__events`
-  * Format: Data is ingested and stored as-is. often in its native format or converted to Parquet for storage and accessibility efficiency if we are using *Iceberg* as the table format.
+  * Format: Data is ingested and stored as-is. often in its native format or converted to Parquet for storage and accessibility efficiency if we are using *Iceberg* as the table format. for real-time (write-heavy) data consider to store in Avro format.
 
 * **Silver Layer (Cleansed & Transformed Data)**:
 Data from Bronze layer is cleaned, deduplicated, and transformed into queryable data model. This is where the identity resolution occurs and the foundational tables (e.g., clean `users`, unified `orders`) are built.
@@ -49,4 +49,40 @@ For the Gold Layer, we will use **Star Schema**. This model is industry-standard
 
 To track historical changes in dimension tables. We will use **SCD Type 2** strategy for `dim_users`. This means instead of overwriting user attribute changes (e.g. address), we will create a new record. Each record will have `is_current` (bool) and `end_date` columns to maintain the full history. This is critical for accurate historical reporting and GDPR compliance.
 
-## 
+## 4. Tech & Tools Choice and its Tradeoffs
+
+* **Object Storage (AWS S3/GCS)**:
+	* **Choice**: The foundation of lakehouse. because it is highly durable, scalable, and extremely cost-effective compared to traditional HDFS or database storage.
+	* **Tradeoff**: Higher latency than attached storage, but this mitigated by our processing engine and table format [read more](./explanations/object-storage.md).
+
+* **Apache Iceberg (Table Format)**:
+	* **Choice**: Iceberg is chosen over traditional Hive tables or even Delta Lake for several key reasons:
+	  1. **Atomic Transactions & Reliability**: it guarantees data integrity.
+	  2. **Schema Evolution**:
+	  3. **Time Travel**:
+	  4. **Partition Evolution**:
+	  5. **Others**: [Iceberg vs Delta lake (2025)](https://bigdataperformance.substack.com/p/delta-lake-vs-apache-iceberg-the)
+	* **Tradeoff**: Although it is a relative newer and slightly smaller community than `Delta Lake`, but its feature set is better fit for our governance and schema evolution needs. read more on the link on *Others* reason above.
+
+* **Apache Parquet (File Format)**:
+    * **Choice**: The best in class columnar storage format. It offers excellent compression and performance for analytical queries because it allows engine to read only the columns needed.
+		* **Tradeoff**: Not optimal for write-heavy, transactional workloads, but that is handled by the source OLTP databases.
+
+* **Apache Avro (File Format)**:
+    * **Choice**: This format offers compact binary encoding, fast sequential writes, and strong schema evolution support, making it well-suited for evolving schemas and frequent append (write-heavy) operations
+		* **Tradeoff**: used for real-time data only and used only on Bronze layer for fast and efficient data ingestion.
+
+* **Apache Spark (Processing Engine)**:
+    * **Choice**: The de-facto standard for large-scale data processing. It has robust integrations with all our chosen technologies (Kafka, Iceberg, Parquet) and can handle both batch and streaming workloads.
+    * **Tradeoff**: Can have a steep learning curve and operational overhead if self-managed. Using a managed service like AWS Glue, Databricks, or Google Cloud Dataproc is highly recommended to reduce this overhead.
+	
+* **Other Considerations**:
+	* If the real-time data ingestion is very high in volume and velocity and also need to be cleaned, transformed or enrich for real-time reporting and application. then, we will use *Apache Flink* for data processing before storing it into our bronze table. In parallel the processed data could also be directly write into another kafka topic if it used for another application or service. FLink performed better than spark streaming in real-time data scenario.
+
+## 5. Assumptions & Indonesian Context
+
+* **Cloud Platform**: Assumes a major cloud provider (AWS, GCP, Azure) is used. The architecture should be cloud-agnostic.
+* **Data Volume**: The design assumes data volume will grow significantly, making scalability and cost key concerns.
+* **Cost-Effectiveness**: In the economic context, managing Total Cost of Ownership (TCO) is paramount. The choice of object storage, Parquet, and the ability to use spot instances for Spark clusters makes this architecture highly cost-efficient.
+* **Marketplace Data**: Data from Indonesian marketplaces (e.g., Tokopedia, Shopee) can be inconsistent. The ingestion plan includes a robust cleaning and mapping step to handle variations in `product_name` and user identifiers.
+* **Identity**: User identity is fragmented. A user may use an email for a web order, a phone number at a POS, and a different email on a marketplace. Our identity resolution strategy ([see](../scripts/identity_resolution.md)) is a cornerstone of this design.
