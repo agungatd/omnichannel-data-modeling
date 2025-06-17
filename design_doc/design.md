@@ -38,4 +38,15 @@ This layer contains business-level aggregates and dimensional models optimized f
 		* ``
 	* Format: **Apache Iceberg** tables, potentially with further performance optimization (e.g. partitioning).
 
+## 3. Data Model Design: Star Schema
 
+For the Gold Layer, we will use **Star Schema**. This model is industry-standard for analyics because it is simple to understand, performant for aggregations, and easily extendable.
+
+* **Fact Table**: `fact_order` the central table containing quantitative measures (e.g., `total_amount`, `quantity`) and foreign keys to dimensional tables.
+* **Dimension Tables**: These tables describe the business entities (`dim_users`, `dim_products`, `dim_stores`, `dim_date`). They contain descriptive attributes used for filtering and grouping.
+
+### 3.1. Slowly Changing Dimension
+
+To track historical changes in dimension tables. We will use **SCD Type 2** strategy for `dim_users`. This means instead of overwriting user attribute changes (e.g. address), we will create a new record. Each record will have `is_current` (bool) and `end_date` columns to maintain the full history. This is critical for accurate historical reporting and GDPR compliance.
+
+## 
