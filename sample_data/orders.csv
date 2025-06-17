@@ -1,0 +1,4 @@
+order_id,user_id,source,created_at,total_amount
+101,1,web,2024-01-02T10:00:00,150000
+102,1,pos,2024-01-02T15:00:00,120000
+103,2,marketplace,2024-01-03T09:30:00,200000
