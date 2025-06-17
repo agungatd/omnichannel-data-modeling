@@ -1,7 +1,3 @@
-Here's your take-home **senior data engineer assignment**, complete with instructions, expectations, example data, and a visual schema.
-
----
-
 # **Take-Home Assignment: Omnichannel Retail Data Modeling**
 
 ## Background:
@@ -147,7 +143,7 @@ Short written rationale (\~1 page max) explaining:
   * `README.md`
   * `schema/` (ERD diagrams, DDLs)
   * `sample_data/`
-  * `design_doc.pdf` or `.md`
+  * `design_doc/design.md`
 * Prefer diagrams in PNG, Lucidchart, or Mermaid format
 
 ---
