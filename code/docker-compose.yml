@@ -1,0 +1,16 @@
+services:
+  airflow:
+  postgres:
+  mongo:
+  spark-master:
+  spark-worker:
+  # kafka
+  kafka:
+
+volumes:
+  postgres_data:
+  mongo_data:
+
+networks:
+  omnichannel_network:
+    driver: bridge

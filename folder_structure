@@ -16,6 +16,16 @@ omnichannel-data-modeling/
 │   ├── inventory_snapshots.csv
 │   └── events.json
 │
+├── dags/
+│   ├── shopsphere/
+│   │   ├── bronze_layer_dag.py       # DAG for ingesting data into the Bronze layer
+│   │   ├── silver_layer_dag.py       # DAG for processing data into the Silver layer
+│   │   ├── gold_layer_dag.py         # DAG for creating the final Gold layer models
+│   │   └── utils/
+│   │       ├── spark_jobs.py         # The actual Spark transformation code
+│   │       └── constants.py          # Centralized place for table names, paths etc.
+│   └── README.md
+│
 └── scripts/
     ├── ingestion_plan.md          # Describe your batch/stream integration plan
     └── identity_resolution.md     # Your deduplication & stitching strategy
