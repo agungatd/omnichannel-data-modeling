@@ -161,9 +161,15 @@ services:
     container_name: jupyter-lab
     ports:
       - "8888:8888"
+    # Run the container as the current host user to fix volume permissions
+    user: "${UID}:${GID}" 
     environment:
+      # Pass the UID to the container's start-up script
+      - "NB_UID=${UID}"
+      - "NB_GID=${GID}"
       - SPARK_MASTER=spark://spark-master:7077
       - JUPYTER_TOKEN=shopsphere
+      - JUPYTER_ENABLE_LAB=yes
     volumes:
       - ./spark_apps:/home/jovyan/work
     networks:
