@@ -1,16 +1,180 @@
 services:
-  airflow:
-  postgres:
-  mongo:
-  spark-master:
-  spark-worker:
-  # kafka
-  kafka:
+  # -------------------------------------------------------------------
+  # Airflow Services
+  # -------------------------------------------------------------------
+  postgres-airflow:
+    image: postgres:13
+    container_name: postgres-airflow
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - airflow_db_data:/var/lib/postgresql/data
+    networks:
+      - lakehouse-net
 
-volumes:
-  postgres_data:
-  mongo_data:
+  # airflow-init:
+  #   build:
+  #     context: ./docker/airflow
+  #   container_name: airflow-init
+  #   depends_on:
+  #     - postgres-airflow
+  #   environment:
+  #     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+  #     - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+  #     - AIRFLOW__CORE__FERNET_KEY=FB0o_zt4e3Ziq3LdI52hPga-b3T1E1_a2hV4Z3wl1iU=
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./spark_apps:/opt/airflow/spark_apps
+  #   entrypoint: >
+  #     bash -c "
+  #       airflow db init &&
+  #       airflow users create --username admin --password admin \
+  #         --firstname Admin --lastname User --role Admin --email admin@example.com
+  #     "
+  #   networks:
+  #     - lakehouse-net
+
+  airflow-webserver:
+    build:
+      context: ./docker/airflow
+    container_name: airflow-webserver
+    depends_on:
+      - postgres-airflow
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__FERNET_KEY=FB0o_zt4e3Ziq3LdI52hPga-b3T1E1_a2hV4Z3wl1iU=
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./spark_apps:/opt/airflow/spark_apps
+    command: bash -c "airflow db init && airflow scheduler & airflow webserver"
+    networks:
+      - lakehouse-net
+
+  # -------------------------------------------------------------------
+  # Spark Cluster
+  # -------------------------------------------------------------------
+  spark-master:
+    image: bitnami/spark:3
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8081:8080" # Spark Master UI
+      - "7077:7077"
+    volumes:
+      - ./spark_apps:/opt/bitnami/spark/apps
+    networks:
+      - lakehouse-net
+
+  spark-worker:
+    image: bitnami/spark:3
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./spark_apps:/opt/bitnami/spark/apps
+    networks:
+      - lakehouse-net
+
+  # -------------------------------------------------------------------
+  # Source Databases
+  # -------------------------------------------------------------------
+  postgres-source:
+    image: postgres:13
+    container_name: postgres-source
+    environment:
+      - POSTGRES_USER=shopsphere
+      - POSTGRES_PASSWORD=shopsphere
+      - POSTGRES_DB=shopsphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - source_db_data:/var/lib/postgresql/data
+    networks:
+      - lakehouse-net
+
+  mongo-source:
+    image: mongo:5.0
+    container_name: mongo-source
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker/mongo/init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+      - mongo_data:/data/db
+    networks:
+      - lakehouse-net
+
+  # -------------------------------------------------------------------
+  # Data Lake & Catalog
+  # -------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"  # API Port
+      - "9001:9001"  # Console UI Port
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - lakehouse-net
+
+  nessie-catalog:
+    image: ghcr.io/projectnessie/nessie:0.77.1
+    container_name: nessie-catalog
+    ports:
+      - "19120:19120"
+    networks:
+      - lakehouse-net
+
+  # -------------------------------------------------------------------
+  # Development Tool
+  # -------------------------------------------------------------------
+  jupyter-lab:
+    image: jupyter/pyspark-notebook:latest
+    container_name: jupyter-lab
+    ports:
+      - "8888:8888"
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - JUPYTER_TOKEN=shopsphere
+    volumes:
+      - ./spark_apps:/home/jovyan/work
+    networks:
+      - lakehouse-net
 
 networks:
-  omnichannel_network:
+  lakehouse-net:
     driver: bridge
+
+volumes:
+  airflow_db_data:
+  source_db_data:
+  mongo_data:
+  minio_data:
