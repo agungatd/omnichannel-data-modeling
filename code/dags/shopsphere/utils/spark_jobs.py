@@ -9,6 +9,13 @@ This separation of concerns keeps the DAG files clean and focused on orchestrati
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lit, current_timestamp, sha2, concat_ws
 
+NESSIE_URI = "http://nessie-catalog:19120/api/v1"
+MINIO_URI = "http://minio:9000"
+MINIO_ACCESS_KEY = "admin"
+MINIO_SECRET_KEY = "password"
+LAKEHOUSE_BUCKET = "lakehouse"
+WAREHOUSE_PATH = f"s3a://{LAKEHOUSE_BUCKET}/warehouse"
+
 # In a real project, you would import constants from the constants file.
 # from shopsphere.utils import constants
 
@@ -22,6 +29,103 @@ def get_spark_session(app_name: str) -> SparkSession:
         .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog") \
         .config("spark.sql.catalog.spark_catalog.type", "hive") \
         .getOrCreate()
+
+
+def test_spark_iceberg_minio():
+    # This is the most critical part for connecting Spark to the lakehouse stack.
+    spark_packages = [
+        "org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2",
+        "org.projectnessie.nessie-integrations:nessie-spark-extensions-3.4_2.12:0.77.1",
+        "software.amazon.awssdk:bundle:2.17.230", # AWS SDK for S3 access
+        "org.apache.hadoop:hadoop-aws:3.3.4" # Hadoop-AWS module for s3a filesystem
+    ]
+
+    spark_conf = {
+        # -- General Spark Settings --
+        "spark.jars.packages": ",".join(spark_packages),
+        
+        # -- SQL Extensions for Nessie and Iceberg --
+        "spark.sql.extensions": "org.apache.iceberg.spark.extensions.SparkSqlExtensions,org.projectnessie.spark.extensions.NessieSparkSQLExtensions",
+        
+        # -- Nessie Catalog Configuration --
+        "spark.sql.catalog.nessie": "org.apache.iceberg.spark.SparkCatalog",
+        "spark.sql.catalog.nessie.catalog-impl": "org.apache.iceberg.nessie.NessieCatalog",
+        "spark.sql.catalog.nessie.warehouse": WAREHOUSE_PATH,
+        "spark.sql.catalog.nessie.uri": NESSIE_URI,
+        "spark.sql.catalog.nessie.ref": "main", # Default branch in Nessie
+        "spark.sql.catalog.nessie.authentication.type": "NONE", # No auth for local setup
+
+        # -- S3/MinIO Configuration --
+        "spark.hadoop.fs.s3a.endpoint": MINIO_URI,
+        "spark.hadoop.fs.s3a.access.key": MINIO_ACCESS_KEY,
+        "spark.hadoop.fs.s3a.secret.key": MINIO_SECRET_KEY,
+        "spark.hadoop.fs.s3a.path.style.access": "true", # Required for MinIO
+        "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+    }
+
+
+    # --- 3. Build the Spark Session ---
+    # Use a builder pattern to apply all configurations.
+    builder = SparkSession.builder.appName("JupyterIntegrationTest")
+
+    for key, value in spark_conf.items():
+        builder = builder.config(key, value)
+
+    print("Starting Spark Session...")
+    spark = builder.getOrCreate()
+    print("Spark Session created successfully!")
+
+
+    # --- 4. Run the Integration Test ---
+    # We will use Spark SQL to interact with the Nessie catalog.
+
+    # Set the current catalog to 'nessie' so we don't have to prefix table names.
+    spark.sql("USE nessie;")
+
+    # Create a new database/schema if it doesn't exist.
+    DB_NAME = "bronze"
+    print(f"\nCreating database '{DB_NAME}'...")
+    spark.sql(f"CREATE DATABASE IF NOT EXISTS {DB_NAME};")
+    spark.sql(f"SHOW DATABASES;").show()
+
+    # Create a simple Iceberg table.
+    TABLE_NAME = f"{DB_NAME}.test_users"
+    print(f"Creating table '{TABLE_NAME}'...")
+    spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            id INT,
+            name STRING,
+            event_ts TIMESTAMP
+        )
+        USING iceberg
+        PARTITIONED BY (months(event_ts));
+    """)
+
+    # Insert some data into the table.
+    print("Inserting data...")
+    spark.sql(f"""
+        INSERT INTO {TABLE_NAME} VALUES
+        (1, 'Alice', timestamp('2024-01-15T10:00:00')),
+        (2, 'Bob', timestamp('2024-02-20T12:30:00'));
+    """)
+
+    # Read the data back from the Iceberg table.
+    print(f"Reading data from '{TABLE_NAME}':")
+    df = spark.sql(f"SELECT * FROM {TABLE_NAME};")
+    df.show()
+
+    # Verify the data was written to MinIO by listing files in the warehouse.
+    # Note: This uses a shell command via `os.system` for a quick check.
+    # You can also browse MinIO UI at http://localhost:9001
+    print("\n--- Verification in MinIO ---")
+    print(f"Check the MinIO bucket '{LAKEHOUSE_BUCKET}' in your browser.")
+    print("You should see a path like: warehouse/bronze/test_users/data/...")
+
+
+    # --- 5. Stop the Spark Session ---
+    print("\nStopping Spark session.")
+    spark.stop()
+
 
 # --- Bronze Layer Jobs ---
 

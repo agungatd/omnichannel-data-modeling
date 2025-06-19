@@ -49,11 +49,11 @@ services:
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__FERNET_KEY=FB0o_zt4e3Ziq3LdI52hPga-b3T1E1_a2hV4Z3wl1iU=
+      - AIRFLOW__CORE__TEST_CONNECTION=Enabled
     ports:
       - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./spark_apps:/opt/airflow/spark_apps
     command: bash -c "airflow db init && airflow scheduler & airflow webserver"
     networks:
       - lakehouse-net

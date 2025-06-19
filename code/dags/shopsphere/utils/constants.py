@@ -4,6 +4,12 @@
 Central location for all constants used across the Shopsphere data pipelines.
 This includes table names, paths, and Spark application configurations.
 """
+from dotenv import load_dotenv
+import os
+# Load environment variables from .env file
+load_dotenv()
+
+
 
 # --- Data Lake Paths (Example for S3) ---
 # It's a best practice to externalize these, e.g., in Airflow Variables.
